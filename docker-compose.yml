@@ -4,7 +4,7 @@ services:
     container_name: documentdb
     restart: always
     ports:
-      - 10260:10260
+      - "10260:10260"
     command: ["--username", "username", "--password", "password"]
     healthcheck:
       test: ["CMD-SHELL", "echo | openssl s_client -connect localhost:10260 -brief 2>/dev/null | grep -q CONNECTED"]
@@ -13,6 +13,7 @@ services:
       retries: 5
     networks:
       - backend_services
+
   rabbitmq:
     image: rabbitmq:4.3.2-management-alpine
     container_name: rabbitmq
@@ -21,8 +22,8 @@ services:
       - "RABBITMQ_DEFAULT_USER=username"
       - "RABBITMQ_DEFAULT_PASS=password"
     ports:
-      - 15672:15672
-      - 5672:5672
+      - "15672:15672"
+      - "5672:5672"
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
@@ -30,22 +31,15 @@ services:
       retries: 5
     networks:
       - backend_services
+
   order-service:
     build: src/order-service
     container_name: order-service
     restart: always
     ports:
-      - 3000:3000
+      - "3000:3000"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "-O",
-          "/dev/null",
-          "-q",
-          "http://order-service:3000/health",
-        ]
+      test: ["CMD", "wget", "-O", "/dev/null", "-q", "http://order-service:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -60,22 +54,15 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
   makeline-service:
     build: src/makeline-service
     container_name: makeline-service
     restart: always
     ports:
-      - 3001:3001
+      - "3001:3001"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "-O",
-          "/dev/null",
-          "-q",
-          "http://makeline-service:3001/health",
-        ]
+      test: ["CMD", "wget", "-O", "/dev/null", "-q", "http://makeline-service:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -96,38 +83,32 @@ services:
         condition: service_healthy
       documentdb:
         condition: service_healthy
+
   product-service:
     build: src/product-service
     container_name: product-service
     restart: always
     ports:
-      - 3002:3002
+      - "3002:3002"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "-O",
-          "/dev/null",
-          "-q",
-          "http://product-service:3002/health",
-        ]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3002/health"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 10s
     environment:
       - AI_SERVICE_URL=http://ai-service:5001/
     networks:
       - backend_services
+
   store-front:
     build: src/store-front
     container_name: store-front
     restart: always
     ports:
-      - 8080:8080
+      - "8080:8080"
     healthcheck:
-      test:
-        ["CMD", "wget", "-O", "/dev/null", "-q", "http://store-front:80/health"]
+      test: ["CMD", "wget", "-O", "/dev/null", "-q", "http://store-front:80/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -136,15 +117,15 @@ services:
     depends_on:
       - product-service
       - order-service
+
   store-admin:
     build: src/store-admin
     container_name: store-admin
     restart: always
     ports:
-      - 8081:8081
+      - "8081:8081"
     healthcheck:
-      test:
-        ["CMD", "wget", "-O", "/dev/null", "-q", "http://store-admin:80/health"]
+      test: ["CMD", "wget", "-O", "/dev/null", "-q", "http://store-admin:80/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -153,6 +134,7 @@ services:
     depends_on:
       - product-service
       - makeline-service
+
   virtual-customer:
     build: src/virtual-customer
     container_name: virtual-customer
@@ -165,6 +147,7 @@ services:
     depends_on:
       order-service:
         condition: service_healthy
+
   virtual-worker:
     build: src/virtual-worker
     container_name: virtual-worker
@@ -177,36 +160,30 @@ services:
     depends_on:
       makeline-service:
         condition: service_healthy
+
   ai-service:
     build: src/ai-service
     container_name: ai-service
     restart: always
     ports:
-      - 5001:5001
+      - "5001:5001"
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "-O",
-          "/dev/null",
-          "-q",
-          "http://ai-service:5001/health",
-        ]
+      test: ["CMD", "wget", "-O", "/dev/null", "-q", "http://ai-service:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 5
     environment:
       - USE_AZURE_OPENAI=True
       - AZURE_OPENAI_API_VERSION=2024-12-01-preview
-      - AZURE_OPENAI_DEPLOYMENT_NAME= # required if using Azure OpenAI
-      - AZURE_OPENAI_ENDPOINT= # required if using Azure OpenAI
-      - AZURE_OPENAI_API_KEY= # required if using Azure OpenAI key auth (not needed with workload identity)
+      - AZURE_OPENAI_DEPLOYMENT_NAME=
+      - AZURE_OPENAI_ENDPOINT=
+      - AZURE_OPENAI_API_KEY=
       - AZURE_OPENAI_IMAGE_API_VERSION=2025-04-01-preview
-      - AZURE_OPENAI_IMAGE_DEPLOYMENT_NAME= # required for image generation
-      - AZURE_OPENAI_IMAGE_ENDPOINT= # optional override; defaults to AZURE_OPENAI_ENDPOINT
+      - AZURE_OPENAI_IMAGE_DEPLOYMENT_NAME=
+      - AZURE_OPENAI_IMAGE_ENDPOINT=
     networks:
       - backend_services
+
 networks:
   backend_services:
     driver: bridge
